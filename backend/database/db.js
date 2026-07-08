@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const { runMigrations } = require('./migrations');
@@ -32,7 +33,7 @@ if (useMySQL) {
 }
 
 if (!mysqlPool) {
-  const dbDir = 'C:\\SAVORA\\Database';
+  const dbDir = process.env.SAVORA_DB_DIR || path.join(os.tmpdir(), 'savora-database');
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
@@ -431,3 +432,4 @@ const db = {
 };
 
 module.exports = db;
+
