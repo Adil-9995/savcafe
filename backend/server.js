@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const os = require('os');
 const path = require('path');
 const multer = require('multer');
 const helmet = require('helmet');
@@ -33,37 +34,35 @@ app.use((req, res, next) => {
 });
 
 // Setup file uploads for product images
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'uploads/'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+// Temporary: keep uploads in memory on Vercel
+const upload = multer({
+  storage: multer.memoryStorage()
 });
-const upload = multer({ storage });
 
-// Serve uploaded images statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-// Create uploads directory if not exists
-const fs = require('fs');
-if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
-  fs.mkdirSync(path.join(__dirname, 'uploads'));
-}
+// app.use('/uploads', express.static(uploadDir));
 
 // ----------------------------------------------------
 // ROUTES DEFINITIONS
 // ----------------------------------------------------
 
 // Image Upload route (Admin only)
-app.post('/api/upload', authorizeAdmin, upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No image uploaded.' });
+app.post(
+  '/api/upload',
+  authenticateToken,
+  authorizeAdmin,
+  upload.single('image'),
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded.' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Image received successfully.',
+      originalName: req.file.originalname
+    });
   }
-  const imagePath = `/uploads/${req.file.filename}`;
-  res.json({ imagePath });
-});
+);
 
 // Modular Routers
 app.use('/api/auth', require('./routes/auth'));
@@ -91,5 +90,4 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`Backend server is running on http://localhost:${PORT}`);
-  startSyncService();
 });
