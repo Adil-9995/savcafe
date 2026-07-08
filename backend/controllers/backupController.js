@@ -1,12 +1,13 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const db = require('../database/db');
 
-const dbPath = 'C:\\SAVORA\\Database\\savora_pos.db';
-const backupDir = 'C:\\SAVORA\\Backups';
+const dbPath = process.env.SAVORA_DB_PATH || path.join(process.cwd(), 'database', 'savora_pos.db');
+const backupDir = process.env.SAVORA_BACKUP_DIR || path.join(os.tmpdir(), 'savora-backups');
 
 // Ensure backup directory exists on module load
-if (!fs.existsSync(backupDir)) {
+if (!process.env.VERCEL && !fs.existsSync(backupDir)) {
   fs.mkdirSync(backupDir, { recursive: true });
 }
 
