@@ -1,0 +1,14 @@
+{
+  "name": "savora-pos-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SAVORA POS web application for bakery and ice cream operations",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm start --prefix backend\"",
+    "build": "npm run build --prefix frontend",
+    "start": "npm start --prefix backend"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
