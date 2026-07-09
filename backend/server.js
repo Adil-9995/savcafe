@@ -1,51 +1,45 @@
 const express = require('express');
 const cors = require('cors');
-const os = require('os');
-const path = require('path');
 const multer = require('multer');
 const helmet = require('helmet');
 
-// Controller imports
-const authController = require('./controllers/authController');
-const categoryController = require('./controllers/categoryController');
-const productController = require('./controllers/productController');
-const cashierController = require('./controllers/cashierController');
-const billController = require('./controllers/billController');
-const backupController = require('./controllers/backupController');
 const { startSyncService } = require('./services/syncService');
 const { testSupabaseConnection } = require('./services/supabaseService');
-
-// Middleware imports
 const { authenticateToken, authorizeAdmin } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS, Security Headers, and JSON parsing
-app.use(cors());
-app.use(helmet());
+// ----------------------------
+// Middleware
+// ----------------------------
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.options('*', cors());
+
+app.use(helmet({
+  crossOriginResourcePolicy: false
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// HTTP Request logging middleware
 app.use((req, res, next) => {
-  console.log(`[API Log] ${req.method} ${req.url}`);
+  console.log(`${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Setup file uploads for product images
-// Temporary: keep uploads in memory on Vercel
+// ----------------------------
+// Upload
+// ----------------------------
 const upload = multer({
   storage: multer.memoryStorage()
 });
 
-// app.use('/uploads', express.static(uploadDir));
-
-// ----------------------------------------------------
-// ROUTES DEFINITIONS
-// ----------------------------------------------------
-
-// Image Upload route (Admin only)
 app.post(
   '/api/upload',
   authenticateToken,
@@ -53,18 +47,21 @@ app.post(
   upload.single('image'),
   (req, res) => {
     if (!req.file) {
-      return res.status(400).json({ error: 'No image uploaded.' });
+      return res.status(400).json({
+        error: 'No image uploaded.'
+      });
     }
 
     res.json({
       success: true,
-      message: 'Image received successfully.',
-      originalName: req.file.originalname
+      filename: req.file.originalname
     });
   }
 );
 
-// Modular Routers
+// ----------------------------
+// Routes
+// ----------------------------
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/products', require('./routes/products'));
@@ -73,21 +70,43 @@ app.use('/api/bills', require('./routes/bills'));
 app.use('/api/database', require('./routes/database'));
 app.use('/api', require('./routes/reports'));
 
-// Basic health check route
+// ----------------------------
+// Health
+// ----------------------------
 app.get('/', (req, res) => {
-  res.send('SAVORA POS API running successfully.');
+  res.send('SAVORA POS API running successfully');
 });
+
 app.get('/api/health', async (req, res) => {
-  const supabaseStatus = await testSupabaseConnection();
-  res.json({ status: 'healthy', database: 'connected', time: new Date(), supabase: supabaseStatus });
+  const supabase = await testSupabaseConnection();
+
+  res.json({
+    status: 'healthy',
+    database: 'connected',
+    supabase,
+    time: new Date()
+  });
 });
 
-// Global error handler
+// ----------------------------
+// Error Handler
+// ----------------------------
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal Server Error. Something went wrong.' });
+  console.error(err);
+
+  res.status(500).json({
+    error: err.message || 'Internal Server Error'
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend server is running on http://localhost:${PORT}`);
-});
+// ----------------------------
+// Local only
+// ----------------------------
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    startSyncService();
+  });
+}
+
+module.exports = app;
