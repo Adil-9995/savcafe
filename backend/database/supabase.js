@@ -1,6 +1,14 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder-savora.supabase.co';
-const supabaseKey = process.env.SUPABASE_SECRET_KEY || 'placeholder-secret-key';
+if (!process.env.SUPABASE_URL) {
+  throw new Error("SUPABASE_URL is missing");
+}
 
-module.exports = createClient(supabaseUrl, supabaseKey);
+if (!process.env.SUPABASE_SECRET_KEY) {
+  throw new Error("SUPABASE_SECRET_KEY is missing");
+}
+
+module.exports = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY
+);
