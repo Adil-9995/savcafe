@@ -60,7 +60,7 @@ app.post(
 );
 
 // ----------------------------
-// Routes
+// API Routes
 // ----------------------------
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/categories', require('./routes/categories'));
@@ -71,20 +71,42 @@ app.use('/api/database', require('./routes/database'));
 app.use('/api', require('./routes/reports'));
 
 // ----------------------------
-// Health
+// Temporary Seed Route
+// ----------------------------
+app.use('/api/seed', require('./routes/seed'));
+
+// ----------------------------
+// Health Check
 // ----------------------------
 app.get('/', (req, res) => {
   res.send('SAVORA POS API running successfully');
 });
 
 app.get('/api/health', async (req, res) => {
-  const supabase = await testSupabaseConnection();
+  try {
+    const supabase = await testSupabaseConnection();
 
-  res.json({
-    status: 'healthy',
-    database: 'connected',
-    supabase,
-    time: new Date()
+    res.json({
+      success: true,
+      status: 'healthy',
+      database: 'connected',
+      supabase,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+// ----------------------------
+// 404 Handler
+// ----------------------------
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Route not found'
   });
 });
 
@@ -94,17 +116,26 @@ app.get('/api/health', async (req, res) => {
 app.use((err, req, res, next) => {
   console.error(err);
 
-  res.status(500).json({
+  res.status(err.status || 500).json({
+    success: false,
     error: err.message || 'Internal Server Error'
   });
 });
 
 // ----------------------------
-// Local only
+// Local Development Only
 // ----------------------------
 if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
+
+    try {
+      await testSupabaseConnection();
+      console.log('Supabase connected.');
+    } catch (err) {
+      console.error('Supabase connection failed:', err.message);
+    }
+
     startSyncService();
   });
 }
